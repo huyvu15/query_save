@@ -41,7 +41,6 @@ GROUP BY
     u.islearn,
     u.learn_date,
     u.created_at,
-    u.updated_at
-    ;
+    u.updated_at;
 
 

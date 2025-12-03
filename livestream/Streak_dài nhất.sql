@@ -10,21 +10,27 @@ FROM (
         subject_code,
         week_number,
         learn_status,
-        -- tăng streak nếu learn_status=1, reset về 0 nếu learn_status=0
-        @streak := IF(@prev_user = user AND @prev_subject = subject_code, IF(learn_status = 1, @streak + 1, 0), IF(learn_status = 1, 1, 0)) AS streak_length,
+
+        -- Tăng streak nếu learn_status = 1, reset nếu = 0
+        @streak :=
+            IF(
+                @prev_user = user AND @prev_subject = subject_code,
+                IF(learn_status = 1, @streak + 1, 0),
+                IF(learn_status = 1, 1, 0)
+            ) AS streak_length,
+
         @prev_user := user,
         @prev_subject := subject_code
     FROM (
-        -- 🔹 Subquery tạo dữ liệu từng tuần theo user + subject
         SELECT
             u.user,
             tu.subject_code,
             w.week_number,
             IF(COUNT(tu.learn_date) >= 1, 1, 0) AS learn_status
-        FROM
-            users u
+        FROM users u
+
+        -- Tạo tuần 1 → tuần hiện tại (100 tuần max để an toàn)
         JOIN (
-            -- 🔹 Sinh tuần từ 1/9/2025 → tuần hiện tại
             SELECT 
                 @row := @row + 1 AS week_number
             FROM 
@@ -38,16 +44,20 @@ FROM (
             WHERE 
                 @row < FLOOR(DATEDIFF(CURDATE(), '2025-09-01') / 7) + 1
         ) w
-        LEFT JOIN
-            tu_report_timelearning_2526 tu
+
+        LEFT JOIN tu_report_timelearning_2526 tu
             ON u.user = tu.username
             AND FLOOR(DATEDIFF(tu.learn_date, '2025-09-01') / 7) + 1 = w.week_number
-        WHERE
-            u.user = '0325212810'
+
+--         WHERE u.user = '0325212810'
+
         GROUP BY
             u.user,
             tu.subject_code,
             w.week_number
+
+        HAVING tu.subject_code IS NOT NULL   -- ✅ Chỉ lấy các môn thực sự học
+
         ORDER BY
             u.user,
             tu.subject_code,
@@ -57,6 +67,7 @@ FROM (
 ) uw
 GROUP BY uw.user, uw.subject_code
 ORDER BY uw.user, uw.subject_code;
+
 
 -- 🟩 Tính streak học dài nhất kể từ 1/9/2025 cho user 0325212810
 SELECT 
